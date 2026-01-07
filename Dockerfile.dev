@@ -16,5 +16,5 @@ COPY . .
 # Expose port
 EXPOSE 8080
 
-# Start with nodemon for hot reload
+# Start with ts-node-dev for hot reload
 CMD ["npm", "run", "dev"]

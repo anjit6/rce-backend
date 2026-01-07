@@ -6,4 +6,11 @@ yarn-debug.log*
 yarn-error.log*
 *.log
 
+# Lock files
 package-lock.json
+
+# TypeScript
+dist/
+*.tsbuildinfo
+*.js.map
+*.d.ts.map
