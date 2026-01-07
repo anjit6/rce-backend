@@ -43,7 +43,7 @@ cp .env.example .env
 Edit `.env` with your configuration:
 
 ```env
-PORT=5000
+PORT=8080
 NODE_ENV=development
 
 # Database Configuration
@@ -72,8 +72,8 @@ docker-compose down -v
 
 ### 4. Access the application
 
-- API: http://localhost:5000
-- Health check: http://localhost:5000/health
+- API: http://localhost:8080
+- Health check: http://localhost:8080/health
 - Database: localhost:5432
 
 ## Local Development without Docker
@@ -97,7 +97,7 @@ CREATE DATABASE rce_database;
 Create `.env` file with local database settings:
 
 ```env
-PORT=5000
+PORT=8080
 NODE_ENV=development
 DB_USER=postgres
 DB_HOST=localhost
@@ -194,7 +194,7 @@ docker-compose down -v
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `PORT` | Server port | 5000 |
+| `PORT` | Server port | 8080 |
 | `NODE_ENV` | Environment | development |
 | `DB_USER` | Database user | postgres |
 | `DB_HOST` | Database host | localhost |
@@ -220,12 +220,12 @@ docker-compose restart postgres
 ### Port already in use
 
 ```bash
-# Change PORT in .env file or stop the process using port 5000
+# Change PORT in .env file or stop the process using port 8080
 # Windows
-netstat -ano | findstr :5000
+netstat -ano | findstr :8080
 
 # Linux/Mac
-lsof -i :5000
+lsof -i :8080
 ```
 
 ### Reset everything
