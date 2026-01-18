@@ -1,8 +1,10 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express, { Request, Response, NextFunction, Application } from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import pool from './config/database';
+import apiRoutes from './routes';
 
 const app: Application = express();
 const PORT: number = parseInt(process.env.PORT || '8080', 10);
@@ -36,31 +38,28 @@ app.get('/', (_req: Request, res: Response) => {
 });
 
 // Health check endpoint
-app.get('/health', (_req: Request, res: Response) => {
+app.get('/health', async (_req: Request, res: Response) => {
+  let dbStatus = 'disconnected';
+  try {
+    const result = await pool.query('SELECT NOW()');
+    if (result.rows[0]) {
+      dbStatus = 'connected';
+    }
+  } catch {
+    dbStatus = 'error';
+  }
+
   res.json({
     status: 'OK',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    service: 'RCE Backend'
+    service: 'RCE Backend',
+    database: dbStatus
   });
 });
 
-// Placeholder API routes - to be implemented later
-app.get('/api/rules', (_req: Request, res: Response) => {
-  res.json({ message: 'Rules API endpoint - To be implemented' });
-});
-
-app.get('/api/mappings', (_req: Request, res: Response) => {
-  res.json({ message: 'Mappings API endpoint - To be implemented' });
-});
-
-app.post('/api/execute', (_req: Request, res: Response) => {
-  res.json({ message: 'Rule execution endpoint - To be implemented' });
-});
-
-app.get('/api/approvals', (_req: Request, res: Response) => {
-  res.json({ message: 'Approvals API endpoint - To be implemented' });
-});
+// API routes
+app.use('/api', apiRoutes);
 
 // Error handling middleware
 interface CustomError extends Error {
