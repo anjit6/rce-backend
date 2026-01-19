@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { rulesService } from '../services/rules.service';
 import { CreateRuleDto, UpdateRuleDto, RuleStatus } from '../types';
 
-const validStatuses: RuleStatus[] = ['WIP', 'ACTIVE', 'ARCHIVED'];
+const validStatuses: RuleStatus[] = ['WIP', 'TEST', 'PENDING', 'PROD'];
 
 export class RulesController {
   async getAll(req: Request, res: Response, next: NextFunction): Promise<void> {

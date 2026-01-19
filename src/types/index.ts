@@ -1,7 +1,7 @@
 // Database entity types for Rules Configuration Engine
 
 // Enums matching PostgreSQL types
-export type RuleStatus = 'WIP' | 'ACTIVE' | 'ARCHIVED';
+export type RuleStatus = 'WIP' | 'TEST' | 'PENDING' | 'PROD';
 export type StepType = 'subFunction' | 'condition' | 'output';
 export type ParamType = 'inputField' | 'metaDataField' | 'default';
 export type DataSourceType = 'static' | 'inputParam' | 'stepOutputVariable';

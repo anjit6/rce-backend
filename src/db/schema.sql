@@ -10,7 +10,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- ============================================================
 -- ENUMS
 -- ============================================================
-CREATE TYPE rule_status AS ENUM ('WIP', 'ACTIVE', 'ARCHIVED');
+CREATE TYPE rule_status AS ENUM ('WIP', 'TEST', 'PENDING', 'PROD');
 CREATE TYPE step_type AS ENUM ('subFunction', 'condition', 'output');
 CREATE TYPE param_type AS ENUM ('inputField', 'metaDataField', 'default');
 CREATE TYPE data_source_type AS ENUM ('static', 'inputParam', 'stepOutputVariable');
