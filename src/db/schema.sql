@@ -19,8 +19,9 @@ CREATE TYPE data_source_type AS ENUM ('static', 'inputParam', 'stepOutputVariabl
 -- CATEGORIES
 -- ============================================================
 CREATE TABLE categories (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id VARCHAR(50) PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
+    description TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP WITH TIME ZONE
@@ -39,7 +40,7 @@ CREATE TABLE subfunctions (
     description TEXT,
     version VARCHAR(20) DEFAULT 'v1.0',
     function_name VARCHAR(255) NOT NULL UNIQUE,
-    category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
+    category_id VARCHAR(50) REFERENCES categories(id) ON DELETE SET NULL,
     code TEXT NOT NULL,
     return_type VARCHAR(100),
     input_params JSONB DEFAULT '[]'::jsonb, -- Array of input parameter objects
@@ -175,7 +176,9 @@ COMMENT ON TABLE rules IS 'Rule list with metadata and versioning. Each rule has
 COMMENT ON TABLE rule_functions IS 'Rule implementation with generated code and input parameters stored as JSONB. One-to-one relationship with rules. Supports soft delete.';
 COMMENT ON TABLE rule_function_steps IS 'Steps within a rule with all step data stored as JSONB (subfunction params, conditions, or output data). Supports soft delete and includes CHECK constraints to validate step type consistency.';
 
+COMMENT ON COLUMN categories.id IS 'Custom string identifier for the category (e.g., STR, NUM, DATE, UTIL)';
 COMMENT ON COLUMN categories.name IS 'Unique category name for organizing subfunctions';
+COMMENT ON COLUMN categories.description IS 'Description of what types of functions belong in this category';
 COMMENT ON COLUMN subfunctions.name IS 'Subfunction name, unique per version';
 COMMENT ON COLUMN subfunctions.function_name IS 'Unique JavaScript function name used in code generation';
 COMMENT ON COLUMN subfunctions.input_params IS 'Array of input parameter objects: [{"sequence": 1, "name": "param1", "data_type": "string", "mandatory": true, "default_value": null, "description": "..."}]';

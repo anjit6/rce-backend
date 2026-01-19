@@ -46,22 +46,27 @@ export class CategoriesService {
 
   async create(data: CreateCategoryDto): Promise<Category> {
     const result = await pool.query(
-      `INSERT INTO categories (name)
-       VALUES ($1)
+      `INSERT INTO categories (id, name, description)
+       VALUES ($1, $2, $3)
        RETURNING *`,
-      [data.name]
+      [data.id, data.name, data.description || null]
     );
     return result.rows[0];
   }
 
   async update(id: string, data: UpdateCategoryDto): Promise<Category | null> {
     const fields: string[] = [];
-    const values: (string | undefined)[] = [];
+    const values: (string | null | undefined)[] = [];
     let paramIndex = 1;
 
     if (data.name !== undefined) {
       fields.push(`name = $${paramIndex++}`);
       values.push(data.name);
+    }
+
+    if (data.description !== undefined) {
+      fields.push(`description = $${paramIndex++}`);
+      values.push(data.description);
     }
 
     if (fields.length === 0) {

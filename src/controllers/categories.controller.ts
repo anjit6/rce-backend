@@ -51,16 +51,33 @@ export class CategoriesController {
     try {
       const data: CreateCategoryDto = req.body;
 
+      const errors: string[] = [];
+      if (!data.id || typeof data.id !== 'string' || data.id.trim() === '') {
+        errors.push('ID is required');
+      }
       if (!data.name || typeof data.name !== 'string' || data.name.trim() === '') {
+        errors.push('Name is required');
+      }
+
+      if (errors.length > 0) {
         res.status(400).json({
           success: false,
-          error: 'Name is required and must be a non-empty string',
+          error: errors.join(', '),
         });
         return;
       }
 
-      const existing = await categoriesService.findByName(data.name.trim());
-      if (existing) {
+      const existingId = await categoriesService.findById(data.id.trim());
+      if (existingId) {
+        res.status(409).json({
+          success: false,
+          error: 'Category with this ID already exists',
+        });
+        return;
+      }
+
+      const existingName = await categoriesService.findByName(data.name.trim());
+      if (existingName) {
         res.status(409).json({
           success: false,
           error: 'Category with this name already exists',
@@ -68,7 +85,11 @@ export class CategoriesController {
         return;
       }
 
-      const category = await categoriesService.create({ name: data.name.trim() });
+      const category = await categoriesService.create({
+        id: data.id.trim(),
+        name: data.name.trim(),
+        description: data.description,
+      });
 
       res.status(201).json({
         success: true,

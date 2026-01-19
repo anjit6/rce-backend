@@ -64,6 +64,7 @@ export type NextStep = string | { true: string; false: string } | null;
 export interface Category {
   id: string;
   name: string;
+  description: string | null;
   created_at: Date;
   updated_at: Date;
   deleted_at: Date | null;
@@ -131,11 +132,14 @@ export interface RuleFunctionStep {
 // ============================================================
 
 export interface CreateCategoryDto {
+  id: string;
   name: string;
+  description?: string;
 }
 
 export interface UpdateCategoryDto {
   name?: string;
+  description?: string;
 }
 
 export interface CreateSubfunctionDto {
