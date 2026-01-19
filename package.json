@@ -10,6 +10,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "migrate": "ts-node src/db/migrate.ts",
+    "db:reset": "ts-node src/db/reset.ts",
+    "db:refresh": "ts-node src/db/refresh.ts",
     "type-check": "tsc --noEmit"
   },
   "keywords": [

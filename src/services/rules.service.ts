@@ -8,7 +8,7 @@ import {
 } from '../types';
 
 export class RulesService {
-  async findAll(params: PaginationParams & { status?: RuleStatus } = {}): Promise<{ rules: Rule[]; total: number }> {
+  async findAll(params: PaginationParams & { status?: RuleStatus; search?: string } = {}): Promise<{ rules: Rule[]; total: number }> {
     const page = params.page || 1;
     const limit = params.limit || 10;
     const offset = (page - 1) * limit;
@@ -19,6 +19,15 @@ export class RulesService {
     if (params.status) {
       queryParams.push(params.status);
       whereClause += ` AND status = $${queryParams.length}`;
+    }
+
+    if (params.search) {
+      const searchTerm = `%${params.search}%`;
+      queryParams.push(searchTerm);
+      const searchParamIndex = queryParams.length;
+      // Search by id (exact match if numeric) or name/description (case-insensitive partial match)
+      const idCondition = /^\d+$/.test(params.search) ? `id = ${parseInt(params.search, 10)} OR ` : '';
+      whereClause += ` AND (${idCondition}name ILIKE $${searchParamIndex} OR description ILIKE $${searchParamIndex})`;
     }
 
     const countResult = await pool.query(

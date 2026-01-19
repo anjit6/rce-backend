@@ -10,6 +10,7 @@ export class RulesController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
       const status = req.query.status as RuleStatus | undefined;
+      const search = req.query.search as string | undefined;
 
       if (status && !validStatuses.includes(status)) {
         res.status(400).json({
@@ -19,7 +20,7 @@ export class RulesController {
         return;
       }
 
-      const { rules, total } = await rulesService.findAll({ page, limit, status });
+      const { rules, total } = await rulesService.findAll({ page, limit, status, search });
 
       res.json({
         success: true,
