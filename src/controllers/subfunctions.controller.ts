@@ -8,8 +8,9 @@ export class SubfunctionsController {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
       const category_id = req.query.category_id as string | undefined;
+      const search = req.query.search as string | undefined;
 
-      const { subfunctions, total } = await subfunctionsService.findAll({ page, limit, category_id });
+      const { subfunctions, total } = await subfunctionsService.findAll({ page, limit, category_id, search });
 
       res.json({
         success: true,

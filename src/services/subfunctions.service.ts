@@ -7,7 +7,7 @@ import {
 } from '../types';
 
 export class SubfunctionsService {
-  async findAll(params: PaginationParams & { category_id?: string } = {}): Promise<{ subfunctions: Subfunction[]; total: number }> {
+  async findAll(params: PaginationParams & { category_id?: string; search?: string } = {}): Promise<{ subfunctions: Subfunction[]; total: number }> {
     const page = params.page || 1;
     const limit = params.limit || 10;
     const offset = (page - 1) * limit;
@@ -18,6 +18,11 @@ export class SubfunctionsService {
     if (params.category_id) {
       queryParams.push(params.category_id);
       whereClause += ` AND category_id = $${queryParams.length}`;
+    }
+
+    if (params.search) {
+      queryParams.push(`%${params.search}%`);
+      whereClause += ` AND (function_name ILIKE $${queryParams.length} OR name ILIKE $${queryParams.length})`;
     }
 
     const countResult = await pool.query(
