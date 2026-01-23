@@ -1,6 +1,5 @@
 -- Rules Configuration Engine Database Schema
--- PostgreSQL Database Schema for Rule Engine
--- Created: 2026-01-07
+-- Database schema to be implemented
 
 -- ============================================================
 -- EXTENSIONS
@@ -8,17 +7,36 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================================
--- ENUMS
+-- ENUMS (with IF NOT EXISTS check)
 -- ============================================================
-CREATE TYPE rule_status AS ENUM ('WIP', 'TEST', 'PENDING', 'PROD');
-CREATE TYPE step_type AS ENUM ('subFunction', 'condition', 'output');
-CREATE TYPE param_type AS ENUM ('inputField', 'metaDataField', 'default');
-CREATE TYPE data_source_type AS ENUM ('static', 'inputParam', 'stepOutputVariable');
+DO $$ BEGIN
+    CREATE TYPE rule_status AS ENUM ('WIP', 'TEST', 'PENDING', 'PROD');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE step_type AS ENUM ('subFunction', 'condition', 'output');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE param_type AS ENUM ('inputField', 'metaDataField', 'default');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE data_source_type AS ENUM ('static', 'inputParam', 'stepOutputVariable');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- ============================================================
 -- CATEGORIES
 -- ============================================================
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS categories (
     id VARCHAR(50) PRIMARY KEY,
     name VARCHAR(255) NOT NULL UNIQUE,
     description TEXT,
@@ -27,14 +45,14 @@ CREATE TABLE categories (
     deleted_at TIMESTAMP WITH TIME ZONE
 );
 
-CREATE INDEX idx_categories_name ON categories(name);
-CREATE INDEX idx_categories_deleted_at ON categories(deleted_at);
-CREATE INDEX idx_categories_active ON categories(id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_categories_name ON categories(name);
+CREATE INDEX IF NOT EXISTS idx_categories_deleted_at ON categories(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_categories_active ON categories(id) WHERE deleted_at IS NULL;
 
 -- ============================================================
 -- SUBFUNCTIONS (Reusable function definitions)
 -- ============================================================
-CREATE TABLE subfunctions (
+CREATE TABLE IF NOT EXISTS subfunctions (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -50,17 +68,17 @@ CREATE TABLE subfunctions (
     UNIQUE(name, version)
 );
 
-CREATE INDEX idx_subfunctions_name ON subfunctions(name);
-CREATE INDEX idx_subfunctions_category_id ON subfunctions(category_id);
-CREATE INDEX idx_subfunctions_function_name ON subfunctions(function_name);
-CREATE INDEX idx_subfunctions_deleted_at ON subfunctions(deleted_at);
-CREATE INDEX idx_subfunctions_active ON subfunctions(id) WHERE deleted_at IS NULL;
-CREATE INDEX idx_subfunctions_input_params ON subfunctions USING GIN (input_params);
+CREATE INDEX IF NOT EXISTS idx_subfunctions_name ON subfunctions(name);
+CREATE INDEX IF NOT EXISTS idx_subfunctions_category_id ON subfunctions(category_id);
+CREATE INDEX IF NOT EXISTS idx_subfunctions_function_name ON subfunctions(function_name);
+CREATE INDEX IF NOT EXISTS idx_subfunctions_deleted_at ON subfunctions(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_subfunctions_active ON subfunctions(id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_subfunctions_input_params ON subfunctions USING GIN (input_params);
 
 -- ============================================================
 -- RULES (Rule list metadata)
 -- ============================================================
-CREATE TABLE rules (
+CREATE TABLE IF NOT EXISTS rules (
     id SERIAL PRIMARY KEY,
     slug VARCHAR(255) NOT NULL UNIQUE,
     name VARCHAR(255) NOT NULL,
@@ -74,16 +92,16 @@ CREATE TABLE rules (
     deleted_at TIMESTAMP WITH TIME ZONE
 );
 
-CREATE INDEX idx_rules_name ON rules(name);
-CREATE INDEX idx_rules_slug ON rules(slug);
-CREATE INDEX idx_rules_status ON rules(status);
-CREATE INDEX idx_rules_deleted_at ON rules(deleted_at);
-CREATE INDEX idx_rules_active ON rules(id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_rules_name ON rules(name);
+CREATE INDEX IF NOT EXISTS idx_rules_slug ON rules(slug);
+CREATE INDEX IF NOT EXISTS idx_rules_status ON rules(status);
+CREATE INDEX IF NOT EXISTS idx_rules_deleted_at ON rules(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_rules_active ON rules(id) WHERE deleted_at IS NULL;
 
 -- ============================================================
 -- RULE FUNCTIONS (Rule implementation details)
 -- ============================================================
-CREATE TABLE rule_functions (
+CREATE TABLE IF NOT EXISTS rule_functions (
     id SERIAL PRIMARY KEY,
     rule_id INTEGER NOT NULL UNIQUE REFERENCES rules(id) ON DELETE CASCADE,
     code TEXT NOT NULL,
@@ -94,15 +112,15 @@ CREATE TABLE rule_functions (
     deleted_at TIMESTAMP WITH TIME ZONE
 );
 
-CREATE INDEX idx_rule_functions_rule_id ON rule_functions(rule_id);
-CREATE INDEX idx_rule_functions_deleted_at ON rule_functions(deleted_at);
-CREATE INDEX idx_rule_functions_active ON rule_functions(id) WHERE deleted_at IS NULL;
-CREATE INDEX idx_rule_functions_input_params ON rule_functions USING GIN (input_params);
+CREATE INDEX IF NOT EXISTS idx_rule_functions_rule_id ON rule_functions(rule_id);
+CREATE INDEX IF NOT EXISTS idx_rule_functions_deleted_at ON rule_functions(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_rule_functions_active ON rule_functions(id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_rule_functions_input_params ON rule_functions USING GIN (input_params);
 
 -- ============================================================
 -- RULE FUNCTION STEPS
 -- ============================================================
-CREATE TABLE rule_function_steps (
+CREATE TABLE IF NOT EXISTS rule_function_steps (
     id VARCHAR(50) NOT NULL,
     rule_function_id INTEGER NOT NULL REFERENCES rule_functions(id) ON DELETE CASCADE,
     type step_type NOT NULL,
@@ -126,15 +144,15 @@ CREATE TABLE rule_function_steps (
     )
 );
 
-CREATE INDEX idx_rule_function_steps_rule_function_id ON rule_function_steps(rule_function_id);
-CREATE INDEX idx_rule_function_steps_type ON rule_function_steps(type);
-CREATE INDEX idx_rule_function_steps_sequence ON rule_function_steps(rule_function_id, sequence);
-CREATE INDEX idx_rule_function_steps_subfunction_id ON rule_function_steps(subfunction_id);
-CREATE INDEX idx_rule_function_steps_deleted_at ON rule_function_steps(deleted_at);
-CREATE INDEX idx_rule_function_steps_active ON rule_function_steps(id, rule_function_id) WHERE deleted_at IS NULL;
-CREATE INDEX idx_rule_function_steps_subfunction_params ON rule_function_steps USING GIN (subfunction_params);
-CREATE INDEX idx_rule_function_steps_conditions ON rule_function_steps USING GIN (conditions);
-CREATE INDEX idx_rule_function_steps_output_data ON rule_function_steps USING GIN (output_data);
+CREATE INDEX IF NOT EXISTS idx_rule_function_steps_rule_function_id ON rule_function_steps(rule_function_id);
+CREATE INDEX IF NOT EXISTS idx_rule_function_steps_type ON rule_function_steps(type);
+CREATE INDEX IF NOT EXISTS idx_rule_function_steps_sequence ON rule_function_steps(rule_function_id, sequence);
+CREATE INDEX IF NOT EXISTS idx_rule_function_steps_subfunction_id ON rule_function_steps(subfunction_id);
+CREATE INDEX IF NOT EXISTS idx_rule_function_steps_deleted_at ON rule_function_steps(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_rule_function_steps_active ON rule_function_steps(id, rule_function_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_rule_function_steps_subfunction_params ON rule_function_steps USING GIN (subfunction_params);
+CREATE INDEX IF NOT EXISTS idx_rule_function_steps_conditions ON rule_function_steps USING GIN (conditions);
+CREATE INDEX IF NOT EXISTS idx_rule_function_steps_output_data ON rule_function_steps USING GIN (output_data);
 
 -- ============================================================
 -- TRIGGERS FOR updated_at
@@ -147,22 +165,27 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+DROP TRIGGER IF EXISTS update_categories_updated_at ON categories;
 CREATE TRIGGER update_categories_updated_at
     BEFORE UPDATE ON categories
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_subfunctions_updated_at ON subfunctions;
 CREATE TRIGGER update_subfunctions_updated_at
     BEFORE UPDATE ON subfunctions
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_rules_updated_at ON rules;
 CREATE TRIGGER update_rules_updated_at
     BEFORE UPDATE ON rules
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_rule_functions_updated_at ON rule_functions;
 CREATE TRIGGER update_rule_functions_updated_at
     BEFORE UPDATE ON rule_functions
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_rule_function_steps_updated_at ON rule_function_steps;
 CREATE TRIGGER update_rule_function_steps_updated_at
     BEFORE UPDATE ON rule_function_steps
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -190,3 +213,4 @@ COMMENT ON COLUMN rule_function_steps.next_step IS 'Flow control: For conditions
 COMMENT ON COLUMN rule_function_steps.subfunction_params IS 'For subFunction type: [{"subfunction_param_name": "param1", "data_type": "static|inputParam|stepOutputVariable", "data_value": "value|paramId|stepId"}]';
 COMMENT ON COLUMN rule_function_steps.conditions IS 'For condition type: [{"sequence": 1, "and_or": null|"AND"|"OR", "lhs_type": "static|inputParam|stepOutputVariable", "lhs_data_type": "string", "lhs_value": "...", "operator": "==|<=|<|>=|>|!=|contains|does not contain|starts with|ends with", "rhs_type": "static|inputParam|stepOutputVariable", "rhs_data_type": "string", "rhs_value": "..."}]';
 COMMENT ON COLUMN rule_function_steps.output_data IS 'For output type: {"data_type": "static|inputParam|stepOutputVariable", "data_value_type": "string|number|...", "data_value": "..."}';
+
