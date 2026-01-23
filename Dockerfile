@@ -4,6 +4,9 @@ FROM node:18-alpine
 # Build argument for environment (default: production)
 ARG NODE_ENV=production
 
+# Set as environment variable so it's available at runtime
+ENV NODE_ENV=$NODE_ENV
+
 # Set working directory
 WORKDIR /app
 
