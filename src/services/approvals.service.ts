@@ -39,7 +39,9 @@ export class ApprovalsService {
       const searchTerm = `%${params.search}%`;
       queryParams.push(searchTerm);
       const searchParamIndex = queryParams.length;
-      whereClause += ` AND (r.name ILIKE $${searchParamIndex} OR r.slug ILIKE $${searchParamIndex} OR ra.request_comment ILIKE $${searchParamIndex} OR ra.requested_by ILIKE $${searchParamIndex})`;
+      // Search by id (exact match if numeric) or other fields (case-insensitive partial match)
+      const idCondition = /^\d+$/.test(params.search) ? `ra.id = ${parseInt(params.search, 10)} OR ` : '';
+      whereClause += ` AND (${idCondition}r.name ILIKE $${searchParamIndex} OR r.slug ILIKE $${searchParamIndex} OR ra.request_comment ILIKE $${searchParamIndex} OR ra.requested_by ILIKE $${searchParamIndex})`;
     }
 
     const countResult = await pool.query(
