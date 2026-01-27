@@ -75,8 +75,8 @@ export class ApprovalsController {
       const data: CreateApprovalDto = req.body;
 
       const errors: string[] = [];
-      if (!data.rule_version_id || typeof data.rule_version_id !== 'string') {
-        errors.push('rule_version_id is required');
+      if (!data.rule_version_id || typeof data.rule_version_id !== 'number') {
+        errors.push('rule_version_id is required and must be a number');
       }
       if (!data.rule_id || typeof data.rule_id !== 'number') {
         errors.push('rule_id is required and must be a number');
