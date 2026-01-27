@@ -11,6 +11,7 @@ export class RulesController {
       const limit = parseInt(req.query.limit as string) || 10;
       const status = req.query.status as RuleStatus | undefined;
       const search = req.query.search as string | undefined;
+      const for_approval_request = req.query.for_approval_request === 'true';
 
       if (status && !validStatuses.includes(status)) {
         res.status(400).json({
@@ -20,7 +21,7 @@ export class RulesController {
         return;
       }
 
-      const { rules, total } = await rulesService.findAll({ page, limit, status, search });
+      const { rules, total } = await rulesService.findAll({ page, limit, status, search, for_approval_request });
 
       res.json({
         success: true,

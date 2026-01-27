@@ -17,13 +17,19 @@ export class RulesService {
     const limit = params.limit || 10;
     const offset = (page - 1) * limit;
 
-    // Special handling for approval request search
-    if (params.for_approval_request && params.search) {
-      const searchTerm = `%${params.search}%`;
-      const queryParams: (string | number)[] = [searchTerm];
+    // Special handling for approval request
+    if (params.for_approval_request) {
+      let whereClause = 'WHERE r.deleted_at IS NULL';
+      const queryParams: (string | number)[] = [];
       
-      // Search by id (exact match if numeric) or name (case-insensitive partial match)
-      const idCondition = /^\d+$/.test(params.search) ? `r.id = ${parseInt(params.search, 10)} OR ` : '';
+      // Add search condition if provided
+      if (params.search) {
+        const searchTerm = `%${params.search}%`;
+        queryParams.push(searchTerm);
+        // Search by id (exact match if numeric) or name (case-insensitive partial match)
+        const idCondition = /^\d+$/.test(params.search) ? `r.id = ${parseInt(params.search, 10)} OR ` : '';
+        whereClause += ` AND (${idCondition}r.name ILIKE $${queryParams.length})`;
+      }
       
       const countResult = await pool.query(
         `SELECT COUNT(DISTINCT r.id) 
@@ -31,8 +37,7 @@ export class RulesService {
          INNER JOIN rule_versions rv ON r.id = rv.rule_id 
            AND r.version_major = rv.major_version 
            AND r.version_minor = rv.minor_version
-         WHERE r.deleted_at IS NULL 
-           AND (${idCondition}r.name ILIKE $1)`,
+         ${whereClause}`,
         queryParams
       );
       const total = parseInt(countResult.rows[0].count, 10);
@@ -44,10 +49,9 @@ export class RulesService {
          INNER JOIN rule_versions rv ON r.id = rv.rule_id 
            AND r.version_major = rv.major_version 
            AND r.version_minor = rv.minor_version
-         WHERE r.deleted_at IS NULL 
-           AND (${idCondition}r.name ILIKE $1)
+         ${whereClause}
          ORDER BY r.created_at DESC
-         LIMIT $2 OFFSET $3`,
+         LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}`,
         queryParams
       );
 

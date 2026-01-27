@@ -3,11 +3,20 @@ dotenv.config();
 
 import express, { Request, Response, NextFunction, Application } from 'express';
 import cors from 'cors';
+import swaggerUi from 'swagger-ui-express';
 import pool from './config/database';
 import apiRoutes from './routes';
 
 const app: Application = express();
 const PORT: number = parseInt(process.env.PORT || '8080', 10);
+
+// Swagger documentation
+let swaggerDocument;
+try {
+  swaggerDocument = require('../swagger-output.json');
+} catch (error) {
+  console.warn('Swagger documentation not found. Run "npm run swagger" to generate it.');
+}
 
 // Middleware
 app.use(cors());
@@ -29,6 +38,7 @@ app.get('/', (_req: Request, res: Response) => {
     description: 'Backend API for managing business rules with approval workflow, versioning, and mapping',
     endpoints: {
       health: '/health',
+      documentation: '/api-docs',
       rules: '/api/rules',
       mappings: '/api/mappings',
       execution: '/api/execute',
@@ -57,6 +67,15 @@ app.get('/health', async (_req: Request, res: Response) => {
     database: dbStatus
   });
 });
+
+// Swagger documentation endpoint
+if (swaggerDocument) {
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
+    explorer: true,
+    customSiteTitle: 'RCE API Documentation',
+    customCss: '.swagger-ui .topbar { display: none }'
+  }));
+}
 
 // API routes
 app.use('/api', apiRoutes);
