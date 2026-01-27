@@ -212,6 +212,7 @@ CREATE INDEX IF NOT EXISTS idx_rule_versions_steps ON rule_versions USING GIN (r
 CREATE TABLE IF NOT EXISTS rule_approvals (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     rule_version_id UUID NOT NULL REFERENCES rule_versions(id) ON DELETE CASCADE,
+    rule_id INTEGER NOT NULL REFERENCES rules(id) ON DELETE CASCADE,
 
     -- Stage transition
     from_stage rule_status NOT NULL,
@@ -221,6 +222,7 @@ CREATE TABLE IF NOT EXISTS rule_approvals (
     -- Request info
     requested_by VARCHAR(255) NOT NULL,
     requested_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    request_comment TEXT,
 
     -- Approval status
     status approval_status NOT NULL DEFAULT 'PENDING',
@@ -229,9 +231,7 @@ CREATE TABLE IF NOT EXISTS rule_approvals (
     action approval_action,
     action_by VARCHAR(255),
     action_at TIMESTAMP WITH TIME ZONE,
-
-    -- Comment
-    comment TEXT,
+    action_comment TEXT,
 
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -239,6 +239,7 @@ CREATE TABLE IF NOT EXISTS rule_approvals (
 
 -- Indexes for rule_approvals
 CREATE INDEX IF NOT EXISTS idx_rule_approvals_rule_version_id ON rule_approvals(rule_version_id);
+CREATE INDEX IF NOT EXISTS idx_rule_approvals_rule_id ON rule_approvals(rule_id);
 CREATE INDEX IF NOT EXISTS idx_rule_approvals_status ON rule_approvals(status);
 CREATE INDEX IF NOT EXISTS idx_rule_approvals_requested_by ON rule_approvals(requested_by);
 CREATE INDEX IF NOT EXISTS idx_rule_approvals_requested_at ON rule_approvals(requested_at);
@@ -357,11 +358,14 @@ COMMENT ON COLUMN rule_versions.test_status IS 'Whether testing has been complet
 COMMENT ON COLUMN rule_versions.created_by IS 'User who created this version';
 COMMENT ON COLUMN rule_versions.comment IS 'Optional save comment';
 
+COMMENT ON COLUMN rule_approvals.rule_id IS 'Reference to the parent rule';
 COMMENT ON COLUMN rule_approvals.from_stage IS 'Stage before the transition';
 COMMENT ON COLUMN rule_approvals.to_stage IS 'Target stage for the transition';
 COMMENT ON COLUMN rule_approvals.moved_to_stage IS 'Actual stage after action is taken';
+COMMENT ON COLUMN rule_approvals.request_comment IS 'Comment provided when the approval request was made';
 COMMENT ON COLUMN rule_approvals.status IS 'Current status: PENDING, APPROVED, REJECTED, WITHDRAWN';
 COMMENT ON COLUMN rule_approvals.action IS 'Action taken: REQUESTED, APPROVED, REJECTED, WITHDRAWN';
+COMMENT ON COLUMN rule_approvals.action_comment IS 'Comment provided when action was taken on the approval request';
 
 COMMENT ON COLUMN rule_stage_history.from_stage IS 'Previous stage (null for initial creation)';
 COMMENT ON COLUMN rule_stage_history.to_stage IS 'New stage';

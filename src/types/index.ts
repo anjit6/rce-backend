@@ -5,6 +5,8 @@ export type RuleStatus = 'WIP' | 'TEST' | 'PENDING' | 'PROD';
 export type StepType = 'subFunction' | 'condition' | 'output';
 export type ParamType = 'inputField' | 'metaDataField' | 'default';
 export type DataSourceType = 'static' | 'inputParam' | 'stepOutputVariable';
+export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
+export type ApprovalAction = 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
 
 // Input parameter for subfunctions
 export interface SubfunctionInputParam {
@@ -248,4 +250,59 @@ export interface PaginatedResponse<T> {
 export interface PaginationParams {
   page?: number;
   limit?: number;
+}
+
+// ============================================================
+// APPROVAL TYPES
+// ============================================================
+
+export interface RuleApproval {
+  id: string;
+  rule_version_id: string;
+  rule_id: number;
+  from_stage: RuleStatus;
+  to_stage: RuleStatus;
+  moved_to_stage: RuleStatus | null;
+  requested_by: string;
+  requested_at: Date;
+  request_comment: string | null;
+  status: ApprovalStatus;
+  action: ApprovalAction | null;
+  action_by: string | null;
+  action_at: Date | null;
+  action_comment: string | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface RuleStageHistory {
+  id: string;
+  rule_version_id: string;
+  from_stage: RuleStatus | null;
+  to_stage: RuleStatus;
+  changed_by: string;
+  changed_at: Date;
+  reason: string | null;
+}
+
+export interface CreateApprovalDto {
+  rule_version_id: string;
+  rule_id: number;
+  from_stage: RuleStatus;
+  to_stage: RuleStatus;
+  requested_by: string;
+  request_comment?: string;
+}
+
+export interface ApproveRejectDto {
+  action: 'APPROVED' | 'REJECTED';
+  action_by: string;
+  action_comment?: string;
+}
+
+export interface ApprovalFilterParams extends PaginationParams {
+  status?: ApprovalStatus | 'ALL';
+  rule_id?: number;
+  requested_by?: string;
+  search?: string;
 }
