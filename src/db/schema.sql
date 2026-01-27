@@ -171,7 +171,7 @@ CREATE INDEX IF NOT EXISTS idx_rule_function_steps_output_data ON rule_function_
 -- Stores every saved version of a rule (immutable once created)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS rule_versions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id SERIAL PRIMARY KEY,
     rule_id INTEGER NOT NULL REFERENCES rules(id) ON DELETE CASCADE,
 
     -- Version info
@@ -211,7 +211,7 @@ CREATE INDEX IF NOT EXISTS idx_rule_versions_steps ON rule_versions USING GIN (r
 -- ============================================================
 CREATE TABLE IF NOT EXISTS rule_approvals (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    rule_version_id UUID NOT NULL REFERENCES rule_versions(id) ON DELETE CASCADE,
+    rule_version_id INTEGER NOT NULL REFERENCES rule_versions(id) ON DELETE CASCADE,
     rule_id INTEGER NOT NULL REFERENCES rules(id) ON DELETE CASCADE,
 
     -- Stage transition
@@ -258,7 +258,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_rule_approvals_one_pending
 -- ============================================================
 CREATE TABLE IF NOT EXISTS rule_stage_history (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    rule_version_id UUID NOT NULL REFERENCES rule_versions(id) ON DELETE CASCADE,
+    rule_version_id INTEGER NOT NULL REFERENCES rule_versions(id) ON DELETE CASCADE,
 
     -- Stage transition
     from_stage rule_status,
@@ -346,7 +346,7 @@ COMMENT ON TABLE rule_versions IS 'Stores every saved version of a rule. Immutab
 COMMENT ON TABLE rule_approvals IS 'Represents live approval requests for stage transitions. Only one PENDING approval allowed per rule_version.';
 COMMENT ON TABLE rule_stage_history IS 'Tracks every lifecycle movement of a rule version between stages.';
 
-COMMENT ON COLUMN rule_versions.id IS 'UUID primary key';
+COMMENT ON COLUMN rule_versions.id IS 'Sequential ID primary key';
 COMMENT ON COLUMN rule_versions.rule_id IS 'Reference to the parent rule';
 COMMENT ON COLUMN rule_versions.major_version IS 'Major version number (incremented for breaking changes)';
 COMMENT ON COLUMN rule_versions.minor_version IS 'Minor version number (incremented for minor changes)';

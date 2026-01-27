@@ -8,16 +8,53 @@ import {
   SaveRuleDto,
   UpdateCompleteRuleDto,
   CompleteRuleResponse,
-  RuleFunction,
   RuleFunctionStep,
 } from '../types';
 
 export class RulesService {
-  async findAll(params: PaginationParams & { status?: RuleStatus; search?: string } = {}): Promise<{ rules: Rule[]; total: number }> {
+  async findAll(params: PaginationParams & { status?: RuleStatus; search?: string; for_approval_request?: boolean } = {}): Promise<{ rules: Rule[]; total: number }> {
     const page = params.page || 1;
     const limit = params.limit || 10;
     const offset = (page - 1) * limit;
 
+    // Special handling for approval request search
+    if (params.for_approval_request && params.search) {
+      const searchTerm = `%${params.search}%`;
+      const queryParams: (string | number)[] = [searchTerm];
+      
+      // Search by id (exact match if numeric) or name (case-insensitive partial match)
+      const idCondition = /^\d+$/.test(params.search) ? `r.id = ${parseInt(params.search, 10)} OR ` : '';
+      
+      const countResult = await pool.query(
+        `SELECT COUNT(DISTINCT r.id) 
+         FROM rules r
+         INNER JOIN rule_versions rv ON r.id = rv.rule_id 
+           AND r.version_major = rv.major_version 
+           AND r.version_minor = rv.minor_version
+         WHERE r.deleted_at IS NULL 
+           AND (${idCondition}r.name ILIKE $1)`,
+        queryParams
+      );
+      const total = parseInt(countResult.rows[0].count, 10);
+
+      queryParams.push(limit, offset);
+      const result = await pool.query(
+        `SELECT r.id, r.name, rv.id as rule_version_id, r.version_major, r.version_minor
+         FROM rules r
+         INNER JOIN rule_versions rv ON r.id = rv.rule_id 
+           AND r.version_major = rv.major_version 
+           AND r.version_minor = rv.minor_version
+         WHERE r.deleted_at IS NULL 
+           AND (${idCondition}r.name ILIKE $1)
+         ORDER BY r.created_at DESC
+         LIMIT $2 OFFSET $3`,
+        queryParams
+      );
+
+      return { rules: result.rows, total };
+    }
+
+    // Normal findAll logic
     let whereClause = 'WHERE deleted_at IS NULL';
     const queryParams: (string | number)[] = [];
 

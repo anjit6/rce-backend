@@ -8,11 +8,16 @@ export type DataSourceType = 'static' | 'inputParam' | 'stepOutputVariable';
 export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
 export type ApprovalAction = 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN';
 
+// Data types for parameters - support both legacy uppercase and proper case
+export type FieldDataType = 
+  | 'STRING' | 'NUMBER' | 'DATE' | 'BOOLEAN' | 'ANY'
+  | 'String' | 'Number' | 'Boolean' | 'Date';
+
 // Input parameter for subfunctions
 export interface SubfunctionInputParam {
   sequence: number;
   name: string;
-  data_type: string;
+  data_type: FieldDataType;
   mandatory: boolean;
   default_value: string | null;
   description?: string;
@@ -22,7 +27,7 @@ export interface SubfunctionInputParam {
 export interface RuleFunctionInputParam {
   sequence: number;
   name: string;
-  data_type: string;
+  data_type: FieldDataType;
   param_type: ParamType;
   mandatory: boolean;
   default_value: string | null;
@@ -41,18 +46,18 @@ export interface StepCondition {
   sequence: number;
   and_or: 'AND' | 'OR' | null;
   lhs_type: DataSourceType;
-  lhs_data_type: string;
+  lhs_data_type: FieldDataType;
   lhs_value: string;
   operator: '==' | '<=' | '<' | '>=' | '>' | '!=' | 'contains' | 'does not contain' | 'starts with' | 'ends with';
   rhs_type: DataSourceType;
-  rhs_data_type: string;
+  rhs_data_type: FieldDataType;
   rhs_value: string;
 }
 
 // Output data for output type steps
 export interface StepOutputData {
   data_type: DataSourceType;
-  data_value_type: string;
+  data_value_type: FieldDataType;
   data_value: string;
 }
 
