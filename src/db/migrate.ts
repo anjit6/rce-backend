@@ -20,6 +20,28 @@ async function runMigration(): Promise<void> {
   try {
     console.log('Starting database migration...');
 
+    // Run pre-schema migrations to add missing columns before schema runs
+    // This is needed because CREATE TABLE IF NOT EXISTS won't add new columns
+    console.log('\nRunning pre-schema migrations...');
+
+    // Add rule_id column to rule_approvals if table exists but column doesn't
+    await client.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.tables
+          WHERE table_name = 'rule_approvals'
+        ) AND NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'rule_approvals' AND column_name = 'rule_id'
+        ) THEN
+          ALTER TABLE rule_approvals ADD COLUMN rule_id INTEGER REFERENCES rules(id) ON DELETE CASCADE;
+        END IF;
+      END $$;
+    `);
+
+    console.log('✓ Pre-schema migrations completed!');
+
     // Read the schema file
     const schemaPath = path.join(__dirname, 'schema.sql');
     const schema = fs.readFileSync(schemaPath, 'utf8');
@@ -28,25 +50,6 @@ async function runMigration(): Promise<void> {
     await client.query(schema);
 
     console.log('✓ Database schema applied successfully!');
-
-    // Run additional migrations to ensure all columns exist
-    console.log('\nRunning additional migrations...');
-
-    // Add rule_id column to rule_approvals if it doesn't exist
-    await client.query(`
-      DO $$
-      BEGIN
-        IF NOT EXISTS (
-          SELECT 1 FROM information_schema.columns
-          WHERE table_name = 'rule_approvals' AND column_name = 'rule_id'
-        ) THEN
-          ALTER TABLE rule_approvals ADD COLUMN rule_id INTEGER REFERENCES rules(id) ON DELETE CASCADE;
-          CREATE INDEX IF NOT EXISTS idx_rule_approvals_rule_id ON rule_approvals(rule_id);
-        END IF;
-      END $$;
-    `);
-
-    console.log('✓ Additional migrations completed!');
 
     // Verify tables were created
     const result = await client.query(`
