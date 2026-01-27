@@ -210,7 +210,7 @@ CREATE INDEX IF NOT EXISTS idx_rule_versions_steps ON rule_versions USING GIN (r
 -- Represents live approval requests (only one active per rule_version)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS rule_approvals (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id SERIAL PRIMARY KEY,
     rule_version_id INTEGER NOT NULL REFERENCES rule_versions(id) ON DELETE CASCADE,
     rule_id INTEGER NOT NULL REFERENCES rules(id) ON DELETE CASCADE,
 
