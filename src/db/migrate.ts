@@ -29,6 +29,25 @@ async function runMigration(): Promise<void> {
 
     console.log('✓ Database schema applied successfully!');
 
+    // Run additional migrations to ensure all columns exist
+    console.log('\nRunning additional migrations...');
+
+    // Add rule_id column to rule_approvals if it doesn't exist
+    await client.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'rule_approvals' AND column_name = 'rule_id'
+        ) THEN
+          ALTER TABLE rule_approvals ADD COLUMN rule_id INTEGER REFERENCES rules(id) ON DELETE CASCADE;
+          CREATE INDEX IF NOT EXISTS idx_rule_approvals_rule_id ON rule_approvals(rule_id);
+        END IF;
+      END $$;
+    `);
+
+    console.log('✓ Additional migrations completed!');
+
     // Verify tables were created
     const result = await client.query(`
       SELECT table_name
