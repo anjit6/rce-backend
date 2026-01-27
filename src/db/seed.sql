@@ -388,3 +388,61 @@ ON CONFLICT (function_name) DO UPDATE SET
 
 -- Reset the subfunctions sequence to continue from the highest ID
 SELECT setval('subfunctions_id_seq', (SELECT MAX(id) FROM subfunctions));
+
+-- ============================================================
+-- PERMISSIONS
+-- ============================================================
+INSERT INTO permissions (id, name, description) VALUES
+-- Rule Management Permissions
+(1, 'CREATE_RULE', 'Create new rules'),
+(2, 'EDIT_RULE', 'Edit existing rules'),
+(3, 'VIEW_RULE', 'View rules'),
+(4, 'TEST_RULE', 'Test rules'),
+(5, 'VIEW_OWN_RULES', 'View only rules created by the user'),
+
+-- Rule Promotion Permissions
+(10, 'PROMOTE_WIP_TO_TEST', 'Promote rule from WIP to TEST stage'),
+(11, 'PROMOTE_TEST_TO_PENDING', 'Promote rule from TEST to PENDING stage'),
+(12, 'PROMOTE_PENDING_TO_PROD', 'Promote rule from PENDING to PROD stage'),
+
+-- Approval Request Permissions
+(20, 'VIEW_PENDING_APPROVALS', 'View pending approval requests'),
+(21, 'VIEW_OWN_REQUESTS', 'View approval requests created by the user'),
+(22, 'VIEW_ALL_REQUESTS', 'View all approval requests'),
+(23, 'CREATE_APPROVAL_REQUEST', 'Create new approval requests'),
+
+-- Approval Action Permissions
+(30, 'APPROVE_WIP_TO_TEST', 'Approve WIP to TEST transitions'),
+(31, 'APPROVE_TEST_TO_PENDING', 'Approve TEST to PENDING transitions'),
+(32, 'APPROVE_PENDING_TO_PROD', 'Approve PENDING to PROD transitions'),
+(33, 'REJECT_APPROVAL', 'Reject approval requests')
+
+ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    description = EXCLUDED.description,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- Reset the permissions sequence
+SELECT setval('permissions_id_seq', (SELECT MAX(id) FROM permissions));
+
+-- ============================================================
+-- ROLES
+-- ============================================================
+INSERT INTO roles (id, name, description, permission_ids) VALUES
+(1, 'DEVELOPER', 'Developer role - can create, edit, view, and test rules. Can promote WIP to TEST and approve WIP to TEST requests.',
+    ARRAY[1, 2, 3, 4, 5, 10, 20, 21, 23, 30]),
+
+(2, 'QA', 'QA role - can test and view all rules. Can promote TEST to PENDING.',
+    ARRAY[3, 4, 11, 20, 21, 23]),
+
+(3, 'APPROVER', 'Approver role - can create, edit, view, and test rules. Can promote TEST to PENDING, PENDING to PROD. Can approve or reject all requests.',
+    ARRAY[1, 2, 3, 4, 11, 12, 20, 22, 23, 31, 32, 33])
+
+ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    description = EXCLUDED.description,
+    permission_ids = EXCLUDED.permission_ids,
+    updated_at = CURRENT_TIMESTAMP;
+
+-- Reset the roles sequence
+SELECT setval('roles_id_seq', (SELECT MAX(id) FROM roles));

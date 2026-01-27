@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { rulesService } from '../services/rules.service';
-import { CreateRuleDto, UpdateRuleDto, RuleStatus } from '../types';
+import { CreateRuleDto, UpdateRuleDto, RuleStatus, SaveRuleDto, UpdateCompleteRuleDto } from '../types';
 
 const validStatuses: RuleStatus[] = ['WIP', 'TEST', 'PENDING', 'PROD'];
 
@@ -193,6 +193,147 @@ export class RulesController {
       res.json({
         success: true,
         message: 'Rule deleted successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /rules/:id/save
+   * Save complete rule JSON - creates records in rule_functions and rule_function_steps
+   * Also creates rule_versions entry on first save
+   */
+  async saveCompleteRule(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid ID format',
+        });
+        return;
+      }
+
+      const data: SaveRuleDto = req.body;
+
+      // Validate required fields
+      const errors: string[] = [];
+      if (!data.code || typeof data.code !== 'string' || data.code.trim() === '') {
+        errors.push('Code is required');
+      }
+      if (!data.steps || !Array.isArray(data.steps) || data.steps.length === 0) {
+        errors.push('Steps array is required and must contain at least one step');
+      }
+
+      if (errors.length > 0) {
+        res.status(400).json({
+          success: false,
+          error: errors.join(', '),
+        });
+        return;
+      }
+
+      const result = await rulesService.saveCompleteRule(id, data);
+
+      res.status(201).json({
+        success: true,
+        data: result,
+        message: 'Rule saved successfully',
+      });
+    } catch (error: any) {
+      if (error.message === 'Rule not found') {
+        res.status(404).json({
+          success: false,
+          error: error.message,
+        });
+        return;
+      }
+      next(error);
+    }
+  }
+
+  /**
+   * PUT /rules/:id/complete
+   * Update complete rule JSON - updates records in rule_functions and rule_function_steps
+   */
+  async updateCompleteRule(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid ID format',
+        });
+        return;
+      }
+
+      const data: UpdateCompleteRuleDto = req.body;
+
+      // Validate required fields
+      const errors: string[] = [];
+      if (!data.code || typeof data.code !== 'string' || data.code.trim() === '') {
+        errors.push('Code is required');
+      }
+      if (!data.steps || !Array.isArray(data.steps) || data.steps.length === 0) {
+        errors.push('Steps array is required and must contain at least one step');
+      }
+
+      if (errors.length > 0) {
+        res.status(400).json({
+          success: false,
+          error: errors.join(', '),
+        });
+        return;
+      }
+
+      const result = await rulesService.updateCompleteRule(id, data);
+
+      res.json({
+        success: true,
+        data: result,
+        message: 'Rule updated successfully',
+      });
+    } catch (error: any) {
+      if (error.message === 'Rule not found' || error.message === 'Rule function not found. Use save API first.') {
+        res.status(404).json({
+          success: false,
+          error: error.message,
+        });
+        return;
+      }
+      next(error);
+    }
+  }
+
+  /**
+   * GET /rules/:id/complete
+   * Fetch complete rule JSON - returns entire rule with input_params, code and steps
+   */
+  async getCompleteRule(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid ID format',
+        });
+        return;
+      }
+
+      const result = await rulesService.getCompleteRule(id);
+
+      if (!result) {
+        res.status(404).json({
+          success: false,
+          error: 'Rule not found',
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: result,
       });
     } catch (error) {
       next(error);

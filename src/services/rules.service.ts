@@ -5,6 +5,11 @@ import {
   UpdateRuleDto,
   PaginationParams,
   RuleStatus,
+  SaveRuleDto,
+  UpdateCompleteRuleDto,
+  CompleteRuleResponse,
+  RuleFunction,
+  RuleFunctionStep,
 } from '../types';
 
 export class RulesService {
@@ -148,6 +153,301 @@ export class RulesService {
       [id]
     );
     return result.rowCount !== null && result.rowCount > 0;
+  }
+
+  /**
+   * Save complete rule JSON - creates/updates rule_functions and rule_function_steps
+   * Creates rule_versions entry on first save
+   */
+  async saveCompleteRule(ruleId: number, data: SaveRuleDto): Promise<CompleteRuleResponse> {
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+
+      // Check if rule exists
+      const ruleResult = await client.query(
+        'SELECT * FROM rules WHERE id = $1 AND deleted_at IS NULL',
+        [ruleId]
+      );
+
+      if (ruleResult.rows.length === 0) {
+        throw new Error('Rule not found');
+      }
+
+      const rule: Rule = ruleResult.rows[0];
+
+      // Check if rule_function exists for this rule
+      const existingRuleFunctionResult = await client.query(
+        'SELECT * FROM rule_functions WHERE rule_id = $1 AND deleted_at IS NULL',
+        [ruleId]
+      );
+
+      let ruleFunctionId: number;
+      let isFirstSave = false;
+
+      if (existingRuleFunctionResult.rows.length === 0) {
+        // First save - insert new rule_function
+        isFirstSave = true;
+        const insertResult = await client.query(
+          `INSERT INTO rule_functions (rule_id, code, return_type, input_params)
+           VALUES ($1, $2, $3, $4)
+           RETURNING *`,
+          [
+            ruleId,
+            data.code,
+            data.return_type || null,
+            JSON.stringify(data.input_params || [])
+          ]
+        );
+        ruleFunctionId = insertResult.rows[0].id;
+      } else {
+        // Update existing rule_function
+        ruleFunctionId = existingRuleFunctionResult.rows[0].id;
+        await client.query(
+          `UPDATE rule_functions 
+           SET code = $1, return_type = $2, input_params = $3, updated_at = CURRENT_TIMESTAMP
+           WHERE id = $4`,
+          [
+            data.code,
+            data.return_type || null,
+            JSON.stringify(data.input_params || []),
+            ruleFunctionId
+          ]
+        );
+      }
+
+      // Delete existing steps for this rule_function
+      await client.query(
+        'DELETE FROM rule_function_steps WHERE rule_function_id = $1',
+        [ruleFunctionId]
+      );
+
+      // Insert new steps
+      const steps: RuleFunctionStep[] = [];
+      for (const step of data.steps) {
+        const stepResult = await client.query(
+          `INSERT INTO rule_function_steps (
+            id, rule_function_id, type, output_variable_name, return_type,
+            next_step, sequence, subfunction_id, subfunction_params, conditions, output_data
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          RETURNING *`,
+          [
+            step.id,
+            ruleFunctionId,
+            step.type,
+            step.output_variable_name || null,
+            step.return_type || null,
+            step.next_step ? JSON.stringify(step.next_step) : null,
+            step.sequence,
+            step.subfunction_id || null,
+            JSON.stringify(step.subfunction_params || []),
+            JSON.stringify(step.conditions || []),
+            step.output_data ? JSON.stringify(step.output_data) : null
+          ]
+        );
+        steps.push(stepResult.rows[0]);
+      }
+
+      // If this is the first save, create a rule_versions entry
+      if (isFirstSave) {
+        await client.query(
+          `INSERT INTO rule_versions (
+            rule_id, major_version, minor_version, stage,
+            rule_function_code, rule_function_input_params, rule_steps,
+            created_by, comment
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [
+            ruleId,
+            rule.version_major,
+            rule.version_minor,
+            rule.status,
+            data.code,
+            JSON.stringify(data.input_params || []),
+            JSON.stringify(data.steps),
+            data.created_by || null,
+            data.comment || null
+          ]
+        );
+      }
+
+      await client.query('COMMIT');
+
+      // Fetch the complete rule function
+      const ruleFunctionResult = await client.query(
+        'SELECT * FROM rule_functions WHERE id = $1',
+        [ruleFunctionId]
+      );
+
+      return {
+        rule,
+        rule_function: ruleFunctionResult.rows[0],
+        steps
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Update complete rule JSON - updates rule_functions and rule_function_steps
+   */
+  async updateCompleteRule(ruleId: number, data: UpdateCompleteRuleDto): Promise<CompleteRuleResponse> {
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+
+      // Check if rule exists
+      const ruleResult = await client.query(
+        'SELECT * FROM rules WHERE id = $1 AND deleted_at IS NULL',
+        [ruleId]
+      );
+
+      if (ruleResult.rows.length === 0) {
+        throw new Error('Rule not found');
+      }
+
+      const rule: Rule = ruleResult.rows[0];
+
+      // Check if rule_function exists
+      const ruleFunctionResult = await client.query(
+        'SELECT * FROM rule_functions WHERE rule_id = $1 AND deleted_at IS NULL',
+        [ruleId]
+      );
+
+      if (ruleFunctionResult.rows.length === 0) {
+        throw new Error('Rule function not found. Use save API first.');
+      }
+
+      const ruleFunctionId = ruleFunctionResult.rows[0].id;
+
+      // Update rule_function
+      await client.query(
+        `UPDATE rule_functions 
+         SET code = $1, return_type = $2, input_params = $3, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $4`,
+        [
+          data.code,
+          data.return_type || null,
+          JSON.stringify(data.input_params || []),
+          ruleFunctionId
+        ]
+      );
+
+      // Delete existing steps
+      await client.query(
+        'DELETE FROM rule_function_steps WHERE rule_function_id = $1',
+        [ruleFunctionId]
+      );
+
+      // Insert new steps
+      const steps: RuleFunctionStep[] = [];
+      for (const step of data.steps) {
+        const stepResult = await client.query(
+          `INSERT INTO rule_function_steps (
+            id, rule_function_id, type, output_variable_name, return_type,
+            next_step, sequence, subfunction_id, subfunction_params, conditions, output_data
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          RETURNING *`,
+          [
+            step.id,
+            ruleFunctionId,
+            step.type,
+            step.output_variable_name || null,
+            step.return_type || null,
+            step.next_step ? JSON.stringify(step.next_step) : null,
+            step.sequence,
+            step.subfunction_id || null,
+            JSON.stringify(step.subfunction_params || []),
+            JSON.stringify(step.conditions || []),
+            step.output_data ? JSON.stringify(step.output_data) : null
+          ]
+        );
+        steps.push(stepResult.rows[0]);
+      }
+
+      await client.query('COMMIT');
+
+      // Fetch the updated rule function
+      const updatedRuleFunctionResult = await client.query(
+        'SELECT * FROM rule_functions WHERE id = $1',
+        [ruleFunctionId]
+      );
+
+      return {
+        rule,
+        rule_function: updatedRuleFunctionResult.rows[0],
+        steps
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Get complete rule JSON - fetches rule with all details, input_params, code and steps
+   */
+  async getCompleteRule(ruleId: number): Promise<CompleteRuleResponse | null> {
+    const client = await pool.connect();
+    
+    try {
+      // Fetch rule
+      const ruleResult = await client.query(
+        'SELECT * FROM rules WHERE id = $1 AND deleted_at IS NULL',
+        [ruleId]
+      );
+
+      if (ruleResult.rows.length === 0) {
+        return null;
+      }
+
+      const rule: Rule = ruleResult.rows[0];
+
+      // Fetch rule_function
+      const ruleFunctionResult = await client.query(
+        'SELECT * FROM rule_functions WHERE rule_id = $1 AND deleted_at IS NULL',
+        [ruleId]
+      );
+
+      if (ruleFunctionResult.rows.length === 0) {
+        // Rule exists but no function yet
+        return {
+          rule,
+          rule_function: {
+            id: 0,
+            code: '',
+            return_type: null,
+            input_params: []
+          },
+          steps: []
+        };
+      }
+
+      const ruleFunction = ruleFunctionResult.rows[0];
+
+      // Fetch all steps for this rule_function
+      const stepsResult = await client.query(
+        `SELECT * FROM rule_function_steps 
+         WHERE rule_function_id = $1 AND deleted_at IS NULL
+         ORDER BY sequence ASC`,
+        [ruleFunction.id]
+      );
+
+      return {
+        rule,
+        rule_function: ruleFunction,
+        steps: stepsResult.rows
+      };
+    } finally {
+      client.release();
+    }
   }
 }
 

@@ -275,6 +275,15 @@ export interface RuleApproval {
   updated_at: Date;
 }
 
+// USER, ROLE, PERMISSION TYPES
+// ============================================================
+export interface Permission {
+  id: number;
+  name: string;
+  description: string | null;
+  created_at: Date;
+  updated_at: Date;
+}
 export interface RuleStageHistory {
   id: string;
   rule_version_id: string;
@@ -305,4 +314,130 @@ export interface ApprovalFilterParams extends PaginationParams {
   rule_id?: number;
   requested_by?: string;
   search?: string;
+}
+
+export interface Role {
+  id: number;
+  name: string;
+  description: string | null;
+  permission_ids: number[];
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface User {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  password: string;
+  role_id: number | null;
+  is_active: boolean;
+  last_login_at: Date | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface UserSession {
+  id: string;
+  user_id: string;
+  token_hash: string;
+  expires_at: Date;
+  created_at: Date;
+}
+
+// User without password for API responses
+export interface UserPublic {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  role_id: number | null;
+  role?: Role;
+  permissions?: string[];
+  is_active: boolean;
+  last_login_at: Date | null;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface CreateUserDto {
+  first_name: string;
+  last_name: string;
+  email: string;
+  password: string;
+  role_id: number;
+}
+
+export interface UpdateUserDto {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  password?: string;
+  role_id?: number;
+  is_active?: boolean;
+}
+
+export interface LoginDto {
+  email: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  user: UserPublic;
+  token: string;
+  expiresAt: Date;
+}
+
+export interface JwtPayload {
+  userId: string;
+  email: string;
+  roleId: number | null;
+  permissions: string[];
+  iat?: number;
+  exp?: number;
+}
+
+// ============================================================
+// COMPLETE RULE TYPES (for save/update/fetch entire rule JSON)
+// ============================================================
+
+export interface SaveRuleStepDto {
+  id: string;
+  type: StepType;
+  output_variable_name?: string;
+  return_type?: string;
+  next_step?: NextStep;
+  sequence: number;
+  subfunction_id?: number;
+  subfunction_params?: SubfunctionParamMapping[];
+  conditions?: StepCondition[];
+  output_data?: StepOutputData;
+}
+
+export interface SaveRuleDto {
+  code: string;
+  return_type?: string;
+  input_params?: RuleFunctionInputParam[];
+  steps: SaveRuleStepDto[];
+  created_by?: string;
+  comment?: string;
+}
+
+export interface UpdateCompleteRuleDto {
+  code: string;
+  return_type?: string;
+  input_params?: RuleFunctionInputParam[];
+  steps: SaveRuleStepDto[];
+}
+
+export interface CompleteRuleResponse {
+  rule: Rule;
+  rule_function: {
+    id: number;
+    code: string;
+    return_type: string | null;
+    input_params: RuleFunctionInputParam[];
+  };
+  steps: RuleFunctionStep[];
 }

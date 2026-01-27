@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import authRoutes from './auth.routes';
 import categoriesRoutes from './categories.routes';
 import subfunctionsRoutes from './subfunctions.routes';
 import rulesRoutes from './rules.routes';
@@ -8,6 +9,7 @@ import approvalsRoutes from './approvals.routes';
 
 const router = Router();
 
+router.use('/auth', authRoutes);
 router.use('/categories', categoriesRoutes);
 router.use('/subfunctions', subfunctionsRoutes);
 router.use('/rules', rulesRoutes);

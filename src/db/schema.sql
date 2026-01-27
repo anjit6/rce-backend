@@ -371,3 +371,97 @@ COMMENT ON COLUMN rule_stage_history.from_stage IS 'Previous stage (null for ini
 COMMENT ON COLUMN rule_stage_history.to_stage IS 'New stage';
 COMMENT ON COLUMN rule_stage_history.reason IS 'Reason for the stage change';
 
+-- ============================================================
+-- PERMISSIONS
+-- Stores all available permissions in the system
+-- ============================================================
+CREATE TABLE IF NOT EXISTS permissions (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_permissions_name ON permissions(name);
+
+-- ============================================================
+-- ROLES
+-- Stores user roles with assigned permissions
+-- ============================================================
+CREATE TABLE IF NOT EXISTS roles (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    permission_ids INTEGER[] DEFAULT '{}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_roles_name ON roles(name);
+CREATE INDEX IF NOT EXISTS idx_roles_permission_ids ON roles USING GIN (permission_ids);
+
+-- ============================================================
+-- USERS
+-- Stores user accounts with role assignments
+-- ============================================================
+CREATE TABLE IF NOT EXISTS users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    role_id INTEGER REFERENCES roles(id) ON DELETE SET NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    last_login_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_role_id ON users(role_id);
+CREATE INDEX IF NOT EXISTS idx_users_is_active ON users(is_active);
+
+-- ============================================================
+-- USER SESSIONS (for token management)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS user_sessions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash VARCHAR(255) NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_token_hash ON user_sessions(token_hash);
+CREATE INDEX IF NOT EXISTS idx_user_sessions_expires_at ON user_sessions(expires_at);
+
+-- Triggers for permissions and roles
+DROP TRIGGER IF EXISTS update_permissions_updated_at ON permissions;
+CREATE TRIGGER update_permissions_updated_at
+    BEFORE UPDATE ON permissions
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_roles_updated_at ON roles;
+CREATE TRIGGER update_roles_updated_at
+    BEFORE UPDATE ON roles
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+CREATE TRIGGER update_users_updated_at
+    BEFORE UPDATE ON users
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Comments for new tables
+COMMENT ON TABLE permissions IS 'Stores all available permissions in the system';
+COMMENT ON TABLE roles IS 'Stores user roles (DEVELOPER, QA, APPROVER) with assigned permissions';
+COMMENT ON TABLE users IS 'User accounts with role assignments and authentication data';
+COMMENT ON TABLE user_sessions IS 'Active user sessions for token-based authentication';
+
+COMMENT ON COLUMN permissions.name IS 'Unique permission name (e.g., CREATE_RULE, EDIT_RULE)';
+COMMENT ON COLUMN roles.permission_ids IS 'Array of permission IDs assigned to this role';
+COMMENT ON COLUMN users.password IS 'Bcrypt hashed password';
+COMMENT ON COLUMN users.is_active IS 'Whether the user account is active';
+COMMENT ON COLUMN user_sessions.token_hash IS 'Hashed JWT token for session validation';
+
