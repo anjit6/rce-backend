@@ -72,10 +72,13 @@ export class ApprovalsService {
     const result = await pool.query(
       `SELECT ra.*, r.name as rule_name, r.slug as rule_slug,
               rv.major_version, rv.minor_version, rv.rule_function_code,
-              rv.rule_function_input_params, rv.rule_steps
+              rv.rule_function_input_params, rv.rule_steps,
+              rf.code as rule_code, rf.return_type as rule_return_type,
+              rf.input_params as rule_input_params
        FROM rule_approvals ra
        JOIN rules r ON ra.rule_id = r.id
        JOIN rule_versions rv ON ra.rule_version_id = rv.id
+       LEFT JOIN rule_functions rf ON r.id = rf.rule_id
        WHERE ra.id = $1`,
       [id]
     );
