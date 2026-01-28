@@ -169,11 +169,17 @@ export class ApprovalsService {
         ]
       );
 
-      // If approved, update the rule_versions stage
+      // If approved, update the rule_versions stage and rule status
       if (data.action === 'APPROVED') {
         await client.query(
           `UPDATE rule_versions SET stage = $1 WHERE id = $2`,
           [approval.to_stage, approval.rule_version_id]
+        );
+
+        // Update the rule status to match the approved stage
+        await client.query(
+          `UPDATE rules SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+          [approval.to_stage, approval.rule_id]
         );
       }
 
