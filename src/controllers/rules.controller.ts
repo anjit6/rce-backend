@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { rulesService } from '../services/rules.service';
-import { CreateRuleDto, UpdateRuleDto, RuleStatus, SaveRuleDto, UpdateCompleteRuleDto } from '../types';
+import { CreateRuleDto, UpdateRuleDto, RuleStatus, SaveRuleDto, UpdateCompleteRuleDto, SaveVersionDto } from '../types';
 
 const validStatuses: RuleStatus[] = ['WIP', 'TEST', 'PENDING', 'PROD'];
 
@@ -337,6 +337,55 @@ export class RulesController {
         data: result,
       });
     } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /rules/:id/version
+   * Save a new version - increments version and creates a rule_versions record
+   */
+  async saveVersion(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid ID format',
+        });
+        return;
+      }
+
+      // Get created_by from authenticated user
+      const created_by = req.user?.userId;
+      if (!created_by) {
+        res.status(401).json({
+          success: false,
+          error: 'Authentication required',
+        });
+        return;
+      }
+
+      const data: SaveVersionDto = {
+        ...req.body,
+        created_by,
+      };
+
+      const result = await rulesService.saveVersion(id, data);
+
+      res.status(201).json({
+        success: true,
+        data: result,
+        message: `Version ${result.rule.version_major}.${result.rule.version_minor} saved successfully`,
+      });
+    } catch (error: any) {
+      if (error.message === 'Rule not found' || error.message.includes('Rule function not found')) {
+        res.status(404).json({
+          success: false,
+          error: error.message,
+        });
+        return;
+      }
       next(error);
     }
   }

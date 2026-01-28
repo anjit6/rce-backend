@@ -9,6 +9,9 @@ import {
   UpdateCompleteRuleDto,
   CompleteRuleResponse,
   RuleFunctionStep,
+  SaveVersionDto,
+  SaveVersionResponse,
+  RuleVersion,
 } from '../types';
 
 export class RulesService {
@@ -486,6 +489,100 @@ export class RulesService {
         rule_function: ruleFunction,
         steps: stepsResult.rows
       };
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Save a new version of the rule
+   * Increments version (major or minor), updates rule, and creates rule_versions record
+   */
+  async saveVersion(ruleId: number, data: SaveVersionDto): Promise<SaveVersionResponse> {
+    const client = await pool.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      // Check if rule exists
+      const ruleResult = await client.query(
+        'SELECT * FROM rules WHERE id = $1 AND deleted_at IS NULL',
+        [ruleId]
+      );
+
+      if (ruleResult.rows.length === 0) {
+        throw new Error('Rule not found');
+      }
+
+      const rule: Rule = ruleResult.rows[0];
+
+      // Check if rule_function exists
+      const ruleFunctionResult = await client.query(
+        'SELECT * FROM rule_functions WHERE rule_id = $1 AND deleted_at IS NULL',
+        [ruleId]
+      );
+
+      if (ruleFunctionResult.rows.length === 0) {
+        throw new Error('Rule function not found. Save the rule first before creating a version.');
+      }
+
+      const ruleFunction = ruleFunctionResult.rows[0];
+
+      // Fetch all steps for this rule_function
+      const stepsResult = await client.query(
+        `SELECT * FROM rule_function_steps
+         WHERE rule_function_id = $1 AND deleted_at IS NULL
+         ORDER BY sequence ASC`,
+        [ruleFunction.id]
+      );
+
+      // Calculate new version (always increment minor)
+      const newMajorVersion = rule.version_major;
+      const newMinorVersion = rule.version_minor + 1;
+
+      // Update the rule's version
+      const updatedRuleResult = await client.query(
+        `UPDATE rules
+         SET version_major = $1, version_minor = $2, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $3
+         RETURNING *`,
+        [newMajorVersion, newMinorVersion, ruleId]
+      );
+
+      const updatedRule: Rule = updatedRuleResult.rows[0];
+
+      // Create new rule_versions record
+      const versionResult = await client.query(
+        `INSERT INTO rule_versions (
+          rule_id, major_version, minor_version, stage,
+          rule_function_code, rule_function_input_params, rule_steps,
+          created_by, comment
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING *`,
+        [
+          ruleId,
+          newMajorVersion,
+          newMinorVersion,
+          rule.status,
+          ruleFunction.code,
+          JSON.stringify(ruleFunction.input_params || []),
+          JSON.stringify(stepsResult.rows),
+          data.created_by,
+          data.comment || null
+        ]
+      );
+
+      const ruleVersion: RuleVersion = versionResult.rows[0];
+
+      await client.query('COMMIT');
+
+      return {
+        rule: updatedRule,
+        rule_version: ruleVersion
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
     } finally {
       client.release();
     }

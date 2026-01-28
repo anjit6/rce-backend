@@ -446,3 +446,32 @@ export interface CompleteRuleResponse {
   };
   steps: RuleFunctionStep[];
 }
+
+// ============================================================
+// RULE VERSION TYPES
+// ============================================================
+
+export interface RuleVersion {
+  id: number;
+  rule_id: number;
+  major_version: number;
+  minor_version: number;
+  stage: RuleStatus;
+  rule_function_code: string;
+  rule_function_input_params: RuleFunctionInputParam[];
+  rule_steps: SaveRuleStepDto[];
+  test_status: boolean;
+  created_by: string | null;
+  created_at: Date;
+  comment: string | null;
+}
+
+export interface SaveVersionDto {
+  created_by: string;
+  comment?: string;
+}
+
+export interface SaveVersionResponse {
+  rule: Rule;
+  rule_version: RuleVersion;
+}
