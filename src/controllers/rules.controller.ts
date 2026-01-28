@@ -13,6 +13,10 @@ export class RulesController {
       const search = req.query.search as string | undefined;
       const for_approval_request = req.query.for_approval_request === 'true';
 
+      // Get user context from authenticated request
+      const userId = req.user?.userId;
+      const userPermissions = req.user?.permissions || [];
+
       if (status && !validStatuses.includes(status)) {
         res.status(400).json({
           success: false,
@@ -21,7 +25,15 @@ export class RulesController {
         return;
       }
 
-      const { rules, total } = await rulesService.findAll({ page, limit, status, search, for_approval_request });
+      const { rules, total } = await rulesService.findAll({
+        page,
+        limit,
+        status,
+        search,
+        for_approval_request,
+        userId,
+        userPermissions,
+      });
 
       res.json({
         success: true,

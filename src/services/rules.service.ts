@@ -13,9 +13,21 @@ import {
   SaveVersionResponse,
   RuleVersion,
 } from '../types';
+import { PERMISSIONS } from '../constants/permissions';
+
+// Extended Rule type with author name
+export interface RuleWithAuthor extends Rule {
+  author_name?: string;
+}
 
 export class RulesService {
-  async findAll(params: PaginationParams & { status?: RuleStatus; search?: string; for_approval_request?: boolean } = {}): Promise<{ rules: Rule[]; total: number }> {
+  async findAll(params: PaginationParams & {
+    status?: RuleStatus;
+    search?: string;
+    for_approval_request?: boolean;
+    userId?: string;
+    userPermissions?: number[];
+  } = {}): Promise<{ rules: RuleWithAuthor[]; total: number }> {
     const page = params.page || 1;
     const limit = params.limit || 10;
     const offset = (page - 1) * limit;
@@ -62,12 +74,20 @@ export class RulesService {
     }
 
     // Normal findAll logic
-    let whereClause = 'WHERE deleted_at IS NULL';
+    let whereClause = 'WHERE r.deleted_at IS NULL';
     const queryParams: (string | number)[] = [];
+
+    // Check if user has VIEW_ALL_RULES permission, otherwise filter by author (VIEW_OWN_RULES)
+    const hasViewAllRules = params.userPermissions?.includes(PERMISSIONS.VIEW_ALL_RULES);
+    if (!hasViewAllRules && params.userId) {
+      // User can only view their own rules
+      queryParams.push(params.userId);
+      whereClause += ` AND r.author = $${queryParams.length}`;
+    }
 
     if (params.status) {
       queryParams.push(params.status);
-      whereClause += ` AND status = $${queryParams.length}`;
+      whereClause += ` AND r.status = $${queryParams.length}`;
     }
 
     if (params.search) {
@@ -75,21 +95,24 @@ export class RulesService {
       queryParams.push(searchTerm);
       const searchParamIndex = queryParams.length;
       // Search by id (exact match if numeric) or name/description (case-insensitive partial match)
-      const idCondition = /^\d+$/.test(params.search) ? `id = ${parseInt(params.search, 10)} OR ` : '';
-      whereClause += ` AND (${idCondition}name ILIKE $${searchParamIndex} OR description ILIKE $${searchParamIndex})`;
+      const idCondition = /^\d+$/.test(params.search) ? `r.id = ${parseInt(params.search, 10)} OR ` : '';
+      whereClause += ` AND (${idCondition}r.name ILIKE $${searchParamIndex} OR r.description ILIKE $${searchParamIndex})`;
     }
 
     const countResult = await pool.query(
-      `SELECT COUNT(*) FROM rules ${whereClause}`,
+      `SELECT COUNT(*) FROM rules r ${whereClause}`,
       queryParams
     );
     const total = parseInt(countResult.rows[0].count, 10);
 
     queryParams.push(limit, offset);
     const result = await pool.query(
-      `SELECT * FROM rules
+      `SELECT r.*,
+              CONCAT(u.first_name, ' ', u.last_name) as author_name
+       FROM rules r
+       LEFT JOIN users u ON r.author = u.id::text
        ${whereClause}
-       ORDER BY created_at DESC
+       ORDER BY r.created_at DESC
        LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}`,
       queryParams
     );

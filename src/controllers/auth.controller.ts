@@ -163,7 +163,7 @@ export class AuthController {
         role = await authService.getRoleById(user.role_id);
       }
 
-      const permissions = await authService.getUserPermissions(user.id);
+      const permissions = await authService.getUserPermissionIds(user.id);
 
       res.json({
         success: true,
