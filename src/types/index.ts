@@ -319,6 +319,8 @@ export interface ApprovalFilterParams extends PaginationParams {
   rule_id?: number;
   requested_by?: string;
   search?: string;
+  userId?: string;
+  userPermissions?: number[];
 }
 
 export interface Role {

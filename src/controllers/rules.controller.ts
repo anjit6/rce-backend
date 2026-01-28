@@ -230,6 +230,9 @@ export class RulesController {
 
       const data: SaveRuleDto = req.body;
 
+      // Add created_by from authenticated user
+      data.created_by = req.user?.userId;
+
       // Validate required fields
       const errors: string[] = [];
       if (!data.code || typeof data.code !== 'string' || data.code.trim() === '') {

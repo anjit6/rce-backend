@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { approvalsService } from '../services/approvals.service';
 import { CreateApprovalDto, ApproveRejectDto, ApprovalStatus, RuleStatus } from '../types';
+import { getCreateRequestPermission, PERMISSIONS } from '../constants/permissions';
 
 const validStatuses: RuleStatus[] = ['WIP', 'TEST', 'PENDING', 'PROD'];
 const validApprovalStatuses: (ApprovalStatus | 'ALL')[] = ['PENDING', 'APPROVED', 'REJECTED', 'WITHDRAWN', 'ALL'];
@@ -14,6 +15,10 @@ export class ApprovalsController {
       const rule_id = req.query.rule_id ? parseInt(req.query.rule_id as string) : undefined;
       const requested_by = req.query.requested_by as string | undefined;
       const search = req.query.search as string | undefined;
+
+      // Get user context from authenticated request
+      const userId = req.user?.userId;
+      const userPermissions = req.user?.permissions || [];
 
       if (status && !validApprovalStatuses.includes(status)) {
         res.status(400).json({
@@ -30,6 +35,8 @@ export class ApprovalsController {
         rule_id,
         requested_by,
         search,
+        userId,
+        userPermissions,
       });
 
       res.json({
@@ -95,6 +102,21 @@ export class ApprovalsController {
         res.status(400).json({
           success: false,
           error: errors.join(', '),
+        });
+        return;
+      }
+
+      // Check if user has the specific stage transition permission or generic permission
+      const stageSpecificPermission = getCreateRequestPermission(data.from_stage, data.to_stage);
+      const userPermissions = req.user?.permissions || [];
+      
+      const hasStagePermission = stageSpecificPermission ? userPermissions.includes(stageSpecificPermission) : false;
+      const hasGenericPermission = userPermissions.includes(PERMISSIONS.CREATE_APPROVAL_REQUEST);
+
+      if (!hasStagePermission && !hasGenericPermission) {
+        res.status(403).json({
+          success: false,
+          error: `You don't have permission to create ${data.from_stage} to ${data.to_stage} approval requests`,
         });
         return;
       }

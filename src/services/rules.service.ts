@@ -34,8 +34,50 @@ export class RulesService {
 
     // Special handling for approval request
     if (params.for_approval_request) {
-      let whereClause = 'WHERE r.deleted_at IS NULL';
+      let whereClause = 'WHERE r.deleted_at IS NULL AND r.status != \'PROD\'';
       const queryParams: (string | number)[] = [];
+      
+      // Filter by status based on user's stage-specific create request permissions
+      const userPermissions = params.userPermissions || [];
+      const allowedStatuses: RuleStatus[] = [];
+      
+      // Check stage-specific permissions
+      if (userPermissions.includes(PERMISSIONS.CREATE_WIP_TO_TEST_REQUEST)) {
+        allowedStatuses.push('WIP');
+      }
+      if (userPermissions.includes(PERMISSIONS.CREATE_TEST_TO_PENDING_REQUEST)) {
+        allowedStatuses.push('TEST');
+      }
+      if (userPermissions.includes(PERMISSIONS.CREATE_PENDING_TO_PROD_REQUEST)) {
+        allowedStatuses.push('PENDING');
+      }
+      
+      // If user has generic CREATE_APPROVAL_REQUEST, show all non-PROD statuses
+      // if (userPermissions.includes(PERMISSIONS.CREATE_APPROVAL_REQUEST)) {
+      //   allowedStatuses.push('WIP', 'TEST', 'PENDING');
+      // }
+
+      console.log('Allowed statuses for approval request:', allowedStatuses);
+      
+      // If user has specific permissions, filter by those statuses
+      if (allowedStatuses.length > 0) {
+        // Remove duplicates
+        const uniqueStatuses = [...new Set(allowedStatuses)];
+        const placeholders = uniqueStatuses.map((_, i) => `$${queryParams.length + i + 1}`).join(', ');
+        whereClause += ` AND r.status::text IN (${placeholders})`;
+        uniqueStatuses.forEach(status => queryParams.push(status));
+      } else {
+        // User has no relevant permissions, return empty result
+        return { rules: [], total: 0 };
+      }
+      
+      // Check if user has VIEW_ALL_RULES permission, otherwise filter by author (VIEW_OWN_RULES)
+      const hasViewAllRules = userPermissions.includes(PERMISSIONS.VIEW_ALL_RULES);
+      if (!hasViewAllRules && params.userId) {
+        // User can only view their own rules
+        queryParams.push(params.userId);
+        whereClause += ` AND r.author = $${queryParams.length}`;
+      }
       
       // Add search condition if provided
       if (params.search) {
@@ -59,7 +101,7 @@ export class RulesService {
 
       queryParams.push(limit, offset);
       const result = await pool.query(
-        `SELECT r.id, r.name, rv.id as rule_version_id, r.version_major, r.version_minor
+        `SELECT r.id, r.name, r.status, rv.id as rule_version_id, r.version_major, r.version_minor
          FROM rules r
          INNER JOIN rule_versions rv ON r.id = rv.rule_id 
            AND r.version_major = rv.major_version 

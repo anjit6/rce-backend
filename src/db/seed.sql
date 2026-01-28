@@ -418,7 +418,10 @@ INSERT INTO permissions (id, name, description) VALUES
 (30, 'APPROVE_WIP_TO_TEST', 'Approve WIP to TEST transitions'),
 (31, 'APPROVE_TEST_TO_PENDING', 'Approve TEST to PENDING transitions'),
 (32, 'APPROVE_PENDING_TO_PROD', 'Approve PENDING to PROD transitions'),
-(33, 'REJECT_APPROVAL', 'Reject approval requests')
+(33, 'REJECT_APPROVAL', 'Reject approval requests'),
+(34, 'CREATE_WIP_TO_TEST_REQUEST', 'Create WIP to TEST approval requests'),
+(35, 'CREATE_TEST_TO_PENDING_REQUEST', 'Create TEST to PENDING approval requests'),
+(36, 'CREATE_PENDING_TO_PROD_REQUEST', 'Create PENDING to PROD approval requests')
 
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
@@ -433,14 +436,14 @@ SELECT setval('permissions_id_seq', (SELECT MAX(id) FROM permissions));
 -- ============================================================
 INSERT INTO roles (id, name, description, permission_ids) VALUES
 (1, 'DEVELOPER', 'Developer role - can create, edit, view, and test rules. Can promote WIP to TEST and approve WIP to TEST requests.',
-    ARRAY[1, 2, 3, 4, 5, 7, 10, 20, 21, 23, 24, 30]),
+    ARRAY[1, 2, 3, 4, 5, 7, 10, 21, 23, 24, 30, 33, 34, 35]),
 
 (2, 'QA', 'QA role - can test and view all rules. Can promote TEST to PENDING.',
-    ARRAY[3, 4, 6, 11, 20, 21, 23, 24]),
+    ARRAY[3, 4, 6, 11, 21, 23, 24, 31, 33, 36]),
 
 (3, 'APPROVER', 'Approver role - can create, edit, view, and test rules. Can promote TEST to PENDING, PENDING to PROD. Can approve or reject all requests.',
-    ARRAY[1, 2, 3, 4, 6, 7, 10, 11, 12, 20, 22, 23, 24, 30, 31, 32, 33])
-
+    ARRAY[1, 2, 3, 4, 6, 7, 10, 11, 12, 20, 22, 23, 24, 30, 31, 32, 33, 34, 35, 36])
+    
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     description = EXCLUDED.description,

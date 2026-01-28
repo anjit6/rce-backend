@@ -28,6 +28,11 @@ export const PERMISSIONS = {
   APPROVE_TEST_TO_PENDING: 31,
   APPROVE_PENDING_TO_PROD: 32,
   REJECT_APPROVAL: 33,
+
+  // Stage-Specific Create Request Permissions (IDs 34-36)
+  CREATE_WIP_TO_TEST_REQUEST: 34,
+  CREATE_TEST_TO_PENDING_REQUEST: 35,
+  CREATE_PENDING_TO_PROD_REQUEST: 36,
 } as const;
 
 export type PermissionId = typeof PERMISSIONS[keyof typeof PERMISSIONS];
@@ -46,14 +51,17 @@ export const STAGE_TRANSITION_PERMISSIONS = {
   'WIP_TO_TEST': {
     promote: PERMISSIONS.PROMOTE_WIP_TO_TEST,
     approve: PERMISSIONS.APPROVE_WIP_TO_TEST,
+    createRequest: PERMISSIONS.CREATE_WIP_TO_TEST_REQUEST,
   },
   'TEST_TO_PENDING': {
     promote: PERMISSIONS.PROMOTE_TEST_TO_PENDING,
     approve: PERMISSIONS.APPROVE_TEST_TO_PENDING,
+    createRequest: PERMISSIONS.CREATE_TEST_TO_PENDING_REQUEST,
   },
   'PENDING_TO_PROD': {
     promote: PERMISSIONS.PROMOTE_PENDING_TO_PROD,
     approve: PERMISSIONS.APPROVE_PENDING_TO_PROD,
+    createRequest: PERMISSIONS.CREATE_PENDING_TO_PROD_REQUEST,
   },
 } as const;
 
@@ -66,4 +74,9 @@ export function getPromotePermission(fromStage: string, toStage: string): Permis
 export function getApprovePermission(fromStage: string, toStage: string): PermissionId | null {
   const key = `${fromStage}_TO_${toStage}` as keyof typeof STAGE_TRANSITION_PERMISSIONS;
   return STAGE_TRANSITION_PERMISSIONS[key]?.approve || null;
+}
+
+export function getCreateRequestPermission(fromStage: string, toStage: string): PermissionId | null {
+  const key = `${fromStage}_TO_${toStage}` as keyof typeof STAGE_TRANSITION_PERMISSIONS;
+  return STAGE_TRANSITION_PERMISSIONS[key]?.createRequest || null;
 }

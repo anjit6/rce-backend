@@ -15,7 +15,7 @@ router.get('/', authorize(PERMISSIONS.VIEW_PENDING_APPROVALS, PERMISSIONS.VIEW_O
 router.get('/:id', authorize(PERMISSIONS.VIEW_APPROVAL_REQUEST_DETAILS), approvalsController.getById.bind(approvalsController));
 
 // POST /approvals - Create new approval request
-router.post('/', authorize(PERMISSIONS.CREATE_APPROVAL_REQUEST), approvalsController.create.bind(approvalsController));
+router.post('/', authorize(PERMISSIONS.CREATE_APPROVAL_REQUEST, PERMISSIONS.CREATE_WIP_TO_TEST_REQUEST, PERMISSIONS.CREATE_TEST_TO_PENDING_REQUEST, PERMISSIONS.CREATE_PENDING_TO_PROD_REQUEST), approvalsController.create.bind(approvalsController));
 
 // PUT /approvals/:id/action - Approve or Reject approval
 router.put('/:id/action', authorize(PERMISSIONS.APPROVE_WIP_TO_TEST, PERMISSIONS.APPROVE_TEST_TO_PENDING, PERMISSIONS.APPROVE_PENDING_TO_PROD, PERMISSIONS.REJECT_APPROVAL), approvalsController.approveOrReject.bind(approvalsController));

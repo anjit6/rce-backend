@@ -6,6 +6,7 @@ import {
   ApprovalFilterParams,
   RuleStatus,
 } from '../types';
+import { PERMISSIONS } from '../constants/permissions';
 
 export class ApprovalsService {
   async findAll(params: ApprovalFilterParams = {}): Promise<{ approvals: RuleApproval[]; total: number }> {
@@ -34,6 +35,15 @@ export class ApprovalsService {
       whereClause += ` AND ra.requested_by = $${queryParams.length}`;
     }
 
+    // Check if user has VIEW_ALL_REQUESTS permission, otherwise filter by requested_by (VIEW_OWN_REQUESTS)
+    const userPermissions = params.userPermissions || [];
+    const hasViewAllRequests = userPermissions.includes(PERMISSIONS.VIEW_ALL_REQUESTS);
+    if (!hasViewAllRequests && params.userId) {
+      // User can only view their own approval requests
+      queryParams.push(params.userId);
+      whereClause += ` AND ra.requested_by = $${queryParams.length}`;
+    }
+
     // Search by rule name or request comment
     if (params.search) {
       const searchTerm = `%${params.search}%`;
@@ -55,10 +65,12 @@ export class ApprovalsService {
     queryParams.push(limit, offset);
     const result = await pool.query(
       `SELECT ra.*, r.name as rule_name, r.slug as rule_slug,
-              rv.major_version, rv.minor_version
+              rv.major_version, rv.minor_version,
+              CONCAT(u.first_name, ' ', u.last_name) as requested_by_name
        FROM rule_approvals ra
        JOIN rules r ON ra.rule_id = r.id
        JOIN rule_versions rv ON ra.rule_version_id = rv.id
+       LEFT JOIN users u ON ra.requested_by = u.id::text
        ${whereClause}
        ORDER BY ra.created_at DESC
        LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}`,
@@ -74,11 +86,15 @@ export class ApprovalsService {
               rv.major_version, rv.minor_version, rv.rule_function_code,
               rv.rule_function_input_params, rv.rule_steps,
               rf.code as rule_code, rf.return_type as rule_return_type,
-              rf.input_params as rule_input_params
+              rf.input_params as rule_input_params,
+              CONCAT(u.first_name, ' ', u.last_name) as requested_by_name,
+              CONCAT(u2.first_name, ' ', u2.last_name) as action_by_name
        FROM rule_approvals ra
        JOIN rules r ON ra.rule_id = r.id
        JOIN rule_versions rv ON ra.rule_version_id = rv.id
        LEFT JOIN rule_functions rf ON r.id = rf.rule_id
+       LEFT JOIN users u ON ra.requested_by = u.id::text
+       LEFT JOIN users u2 ON ra.action_by = u2.id::text
        WHERE ra.id = $1`,
       [id]
     );
