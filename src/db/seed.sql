@@ -400,6 +400,7 @@ INSERT INTO permissions (id, name, description) VALUES
 (4, 'TEST_RULE', 'Test rules'),
 (5, 'VIEW_OWN_RULES', 'View only rules created by the user'),
 (6, 'VIEW_ALL_RULES', 'View all rules'),
+(7, 'SAVE_VERSION', 'Save new version of a rule')
 
 -- Rule Promotion Permissions
 (10, 'PROMOTE_WIP_TO_TEST', 'Promote rule from WIP to TEST stage'),
@@ -432,13 +433,13 @@ SELECT setval('permissions_id_seq', (SELECT MAX(id) FROM permissions));
 -- ============================================================
 INSERT INTO roles (id, name, description, permission_ids) VALUES
 (1, 'DEVELOPER', 'Developer role - can create, edit, view, and test rules. Can promote WIP to TEST and approve WIP to TEST requests.',
-    ARRAY[1, 2, 3, 4, 5, 10, 20, 21, 23, 24, 30]),
+    ARRAY[1, 2, 3, 4, 5, 7, 10, 20, 21, 23, 24, 30]),
 
 (2, 'QA', 'QA role - can test and view all rules. Can promote TEST to PENDING.',
     ARRAY[3, 4, 6, 11, 20, 21, 23, 24]),
 
 (3, 'APPROVER', 'Approver role - can create, edit, view, and test rules. Can promote TEST to PENDING, PENDING to PROD. Can approve or reject all requests.',
-    ARRAY[1, 2, 3, 4, 6, 10, 11, 12, 20, 22, 23, 24, 30, 31, 32, 33])
+    ARRAY[1, 2, 3, 4, 6, 7, 10, 11, 12, 20, 22, 23, 24, 30, 31, 32, 33])
 
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { authService } from '../services/auth.service';
 import { JwtPayload } from '../types';
+import { PermissionId } from '../constants/permissions';
 
 // Extend Express Request to include user info
 declare global {
@@ -93,8 +94,8 @@ export const optionalAuth = async (
   }
 };
 
-// Authorization middleware - checks if user has required permissions
-export const authorize = (...requiredPermissions: string[]) => {
+// Authorization middleware - checks if user has required permissions (by ID)
+export const authorize = (...requiredPermissionIds: PermissionId[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
       res.status(401).json({
@@ -104,19 +105,19 @@ export const authorize = (...requiredPermissions: string[]) => {
       return;
     }
 
-    const userPermissions = req.user.permissions || [];
+    const userPermissionIds = req.user.permissions || [];
 
     // Check if user has at least one of the required permissions
-    const hasPermission = requiredPermissions.some(permission =>
-      userPermissions.includes(permission)
+    const hasPermission = requiredPermissionIds.some(permissionId =>
+      userPermissionIds.includes(permissionId)
     );
 
     if (!hasPermission) {
       res.status(403).json({
         success: false,
         error: 'Insufficient permissions',
-        required: requiredPermissions,
-        userPermissions,
+        required: requiredPermissionIds,
+        userPermissions: userPermissionIds,
       });
       return;
     }
@@ -125,8 +126,8 @@ export const authorize = (...requiredPermissions: string[]) => {
   };
 };
 
-// Check if user has ALL specified permissions
-export const authorizeAll = (...requiredPermissions: string[]) => {
+// Check if user has ALL specified permissions (by ID)
+export const authorizeAll = (...requiredPermissionIds: PermissionId[]) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
       res.status(401).json({
@@ -136,19 +137,19 @@ export const authorizeAll = (...requiredPermissions: string[]) => {
       return;
     }
 
-    const userPermissions = req.user.permissions || [];
+    const userPermissionIds = req.user.permissions || [];
 
     // Check if user has ALL required permissions
-    const hasAllPermissions = requiredPermissions.every(permission =>
-      userPermissions.includes(permission)
+    const hasAllPermissions = requiredPermissionIds.every(permissionId =>
+      userPermissionIds.includes(permissionId)
     );
 
     if (!hasAllPermissions) {
       res.status(403).json({
         success: false,
         error: 'Insufficient permissions',
-        required: requiredPermissions,
-        userPermissions,
+        required: requiredPermissionIds,
+        userPermissions: userPermissionIds,
       });
       return;
     }

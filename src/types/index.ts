@@ -359,7 +359,7 @@ export interface UserPublic {
   email: string;
   role_id: number | null;
   role?: Role;
-  permissions?: string[];
+  permissions?: number[];  // Permission IDs
   is_active: boolean;
   last_login_at: Date | null;
   created_at: Date;
@@ -398,7 +398,7 @@ export interface JwtPayload {
   userId: string;
   email: string;
   roleId: number | null;
-  permissions: string[];
+  permissions: number[];  // Permission IDs
   iat?: number;
   exp?: number;
 }

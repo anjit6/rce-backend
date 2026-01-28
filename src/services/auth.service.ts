@@ -45,20 +45,8 @@ export class AuthService {
     return result.rows[0] || null;
   }
 
-  // Get permissions by IDs
-  async getPermissionsByIds(permissionIds: number[]): Promise<string[]> {
-    if (!permissionIds || permissionIds.length === 0) {
-      return [];
-    }
-    const result = await pool.query(
-      'SELECT name FROM permissions WHERE id = ANY($1)',
-      [permissionIds]
-    );
-    return result.rows.map(row => row.name);
-  }
-
-  // Get user's permissions
-  async getUserPermissions(userId: string): Promise<string[]> {
+  // Get user's permission IDs from role
+  async getUserPermissionIds(userId: string): Promise<number[]> {
     const user = await this.findById(userId);
     if (!user || !user.role_id) {
       return [];
@@ -67,7 +55,7 @@ export class AuthService {
     if (!role) {
       return [];
     }
-    return this.getPermissionsByIds(role.permission_ids);
+    return role.permission_ids || [];
   }
 
   // Create new user
@@ -183,8 +171,8 @@ export class AuthService {
       return null;
     }
 
-    // Get user permissions
-    const permissions = await this.getUserPermissions(user.id);
+    // Get user permission IDs
+    const permissions = await this.getUserPermissionIds(user.id);
 
     // Generate token
     const payload: JwtPayload = {
@@ -214,7 +202,7 @@ export class AuthService {
   }
 
   // Convert User to UserPublic (remove password)
-  toPublicUser(user: User, role?: Role | null, permissions?: string[]): UserPublic {
+  toPublicUser(user: User, role?: Role | null, permissions?: number[]): UserPublic {
     return {
       id: user.id,
       first_name: user.first_name,
