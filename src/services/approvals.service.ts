@@ -148,8 +148,15 @@ export class ApprovalsService {
       if (data.action === 'APPROVED') {
         movedToStage = approval.to_stage;
       } else {
-        // On rejection, stay at from_stage
-        movedToStage = approval.from_stage;
+        // On rejection, determine where to go back based on the transition
+        // WIP → TEST rejection: goes back to WIP
+        // TEST → PENDING rejection: goes back to TEST
+        // PENDING → PROD rejection: goes back to TEST
+        if (approval.from_stage === 'WIP' && approval.to_stage === 'TEST') {
+          movedToStage = 'WIP';
+        } else {
+          movedToStage = 'TEST';
+        }
       }
 
       // Update the approval record
@@ -169,7 +176,7 @@ export class ApprovalsService {
         ]
       );
 
-      // If approved, update the rule_versions stage and rule status
+      // Update the rule_versions stage and rule status based on action
       if (data.action === 'APPROVED') {
         await client.query(
           `UPDATE rule_versions SET stage = $1 WHERE id = $2`,
@@ -180,6 +187,18 @@ export class ApprovalsService {
         await client.query(
           `UPDATE rules SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
           [approval.to_stage, approval.rule_id]
+        );
+      } else {
+        // On rejection, update rule_versions stage to the rejection target
+        await client.query(
+          `UPDATE rule_versions SET stage = $1 WHERE id = $2`,
+          [movedToStage, approval.rule_version_id]
+        );
+
+        // Update the rule status to the rejection target
+        await client.query(
+          `UPDATE rules SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+          [movedToStage, approval.rule_id]
         );
       }
 
